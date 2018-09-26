@@ -1,0 +1,85 @@
+---
+title: 'Lab 2'
+author: "Yijing Lu"
+date: 'Sep 25 2018'
+output:
+  pdf_document:
+    includes:
+    toc: yes
+    number_sections: yes
+    keep_tex: yes
+    latex_engine: xelatex
+header-includes: 
+- \usepackage{graphicx}
+- \usepackage{float}
+---
+
+```{r options, include=FALSE}
+knitr::opts_chunk$set(cache=TRUE, error=FALSE, message=TRUE, warning=TRUE)
+isSolution = TRUE
+seeResults = 'hide'
+```
+
+## Loading Packages
+```{r}
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(knitr)
+```
+
+## Loading Data
+```{r}
+data <- read_csv("lab2.csv")
+colnames(data)
+```
+
+## Make the Plot
+```{r}
+pg <- position_dodge(0.1)
+data %>%
+    gather("Time_Category","Score", base_sport:second_pain) %>%
+    separate("Time_Category", c("Time", "Category")) %>%
+    mutate(Time = as.factor(Time)) ->d
+levels(d$Time) <- c("baseline", "one year", "two years")
+d %>%
+    group_by(Time, Category) %>%
+    summarise(mean = mean(Score), std = sd(Score)) %>%
+    ggplot(aes(Time, mean, group = Category, color = Category)) +
+    geom_point(position = pg) + 
+    geom_line(position = pg) +
+    geom_errorbar(aes(ymin = mean - std, ymax = mean + std), 
+                  width = .1, position = pg) +
+    theme_bw() +
+    theme(legend.title = element_blank(), legend.position = c(0.92, 0.14)) +
+    ylim(0,100) +
+    ylab("Sample mean and standard deviation")
+```
+
+## Loading Data
+```{r}
+coverage <- read_csv("coverage.csv", skip = 2)
+colnames(coverage)
+expen <- read_csv("expenditures.csv", skip = 2)
+colnames(expen)
+```
+
+## Make the data tidy and Merge the two
+```{r}
+coverage <- coverage[rowSums(is.na(coverage)) <= ncol(coverage) - 2,]
+expen <- expen[rowSums(is.na(expen)) <= ncol(expen) - 2,]
+coverage %>%
+    gather("Time_Category","Coverage", `2013__Employer`:`2016__Total`) %>%
+    separate("Time_Category", c("Time", "Category")) %>%
+    filter(Category == "Total") %>%
+    select(- Category) -> coverage1
+
+
+expen %>%
+    gather("Time","Total_Health_Spending", `1991__Total Health Spending`:`2014__Total Health Spending`) %>%
+    mutate(Time = substring(Time, 1, 4)) %>%
+    full_join(coverage1) %>%
+    filter(Time >= 2013) -> merged
+
+knitr::kable(merged)
+```
